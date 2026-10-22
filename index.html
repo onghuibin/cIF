@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>cIF 劑量試算</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#EEF2F4;
+  --surface:#FFFFFF;
+  --field:#F6F8F9;
+  --ink:#16232E;
+  --muted:#586874;
+  --line:#C5D0D7;
+  --accent:#5B3A8C;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#F0EAF8;
+  --warn:#A3360F;
+  --warn-soft:#FCEDE5;
+  --font:"Atkinson Hyperlegible","PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121A21; --surface:#1A242D; --field:#151E26; --ink:#E4EAEE; --muted:#98A7B2; --line:#34434F;
+    --accent:#BBA0E8; --accent-ink:#1B1328; --accent-soft:#2A2340; --warn:#F2A27E; --warn-soft:#3A241B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121A21; --surface:#1A242D; --field:#151E26; --ink:#E4EAEE; --muted:#98A7B2; --line:#34434F;
+  --accent:#BBA0E8; --accent-ink:#1B1328; --accent-soft:#2A2340; --warn:#F2A27E; --warn-soft:#3A241B;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+
+main{max-width:760px;margin:0 auto;padding:24px 16px 0}
+.top h1{margin:0;font-size:1.75rem;line-height:1.2;font-weight:700;letter-spacing:-0.01em}
+.top p{margin:4px 0 0;color:var(--muted);max-width:36em}
+.title-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+.ver{font-size:.8125rem;font-weight:700;color:var(--muted);border:1.5px solid var(--line);border-radius:4px;padding:1px 8px;white-space:nowrap}
+
+/* fields */
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.lab{font-size:.875rem;color:var(--muted);font-weight:700}
+.box{display:flex;align-items:center;min-width:0;background:var(--field);border:1.5px solid var(--line);border-radius:6px}
+.box:focus-within{border-color:var(--accent);outline:2px solid var(--accent);outline-offset:1px}
+.box.bad{border-color:var(--warn);background:var(--warn-soft)}
+.box input,.box select{font:inherit;color:var(--ink);background:transparent;border:0;outline:none;min-width:0}
+.box input{flex:1 1 auto;width:100%;font-size:1.125rem;padding:9px 10px}
+.box input::placeholder{color:var(--muted);opacity:.55}
+.box input[type=date]{min-height:46px}
+.box select{flex:0 0 auto;font-size:1rem;padding:9px 6px;cursor:pointer}
+.box select.full{flex:1 1 auto;width:100%;padding:10px 8px}
+.box .suf{flex:0 0 auto;padding:0 10px 0 2px;color:var(--muted);white-space:nowrap}
+
+/* patient strip */
+.patient{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 14px;margin-top:20px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--line);border-radius:4px}
+.patient .note{grid-column:1/-1;margin:0;padding:8px 10px;border-radius:4px;background:var(--warn-soft);color:var(--warn);font-weight:700;font-size:.95rem}
+.note[hidden]{display:none}
+.date-lab{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.date-lab .chk{font-size:.875rem}
+.box.off{opacity:.45}
+
+/* infusion label */
+.inf{margin-top:16px;background:var(--surface);border:1.5px solid var(--line);border-left:8px solid var(--accent);border-radius:4px;padding:14px 16px 16px}
+.inf-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.name{flex:1;min-width:0;font:inherit;font-size:1.25rem;font-weight:700;color:var(--ink);background:transparent;border:0;border-bottom:1.5px dashed var(--line);border-radius:0;padding:4px 0}
+.name::placeholder{color:var(--muted);font-weight:400;opacity:.8}
+.name:focus{outline:none;border-bottom:1.5px solid var(--accent)}
+.remove{font:inherit;font-size:.875rem;color:var(--muted);background:none;border:0;padding:8px 4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.remove[hidden]{display:none}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+@media (min-width:700px){.grid{grid-template-columns:1.2fr 1fr 1fr 1.15fr}}
+
+.readout{margin-top:16px;padding-top:14px;border-top:1.5px solid var(--line);display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 28px}
+.now-lab{display:block;color:var(--muted);font-size:.95rem;font-weight:700}
+.now-num{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:2px}
+.now-val{font-size:clamp(2.4rem,9vw,3.25rem);font-weight:700;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.now-unit{font-size:1.05rem;font-weight:700}
+.inf.is-empty .now-val{color:var(--line)}
+.inf.is-empty .now-unit{color:var(--muted)}
+.facts{margin:0;display:grid;grid-template-columns:auto auto;gap:2px 14px;font-size:.95rem}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:700;text-align:right}
+
+.target{margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:.95rem}
+.target .t-lab{color:var(--muted);font-weight:700}
+.target .box{width:12rem}
+.target .box input{font-size:1rem;padding:7px 8px}
+.target .suf{font-size:.875rem}
+.tgt-out{font-weight:700}
+.apply{font:inherit;font-size:.9rem;font-weight:700;color:var(--accent);background:none;border:1.5px solid var(--accent);border-radius:6px;padding:6px 10px;min-height:36px;cursor:pointer}
+.apply[hidden]{display:none}
+
+.order{margin-top:14px;padding:12px 14px;background:var(--accent-soft);border-radius:4px}
+.order-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:.9rem;cursor:pointer}
+.chk input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.opts{display:inline-flex;flex-wrap:wrap;gap:6px 16px}
+.order-text{margin:8px 0 10px;font-size:1rem;line-height:1.45;overflow-wrap:anywhere;-webkit-user-select:all;user-select:all}
+.order-text.pending{color:var(--muted);-webkit-user-select:none;user-select:none}
+
+/* actions */
+.btn{flex:1;font:inherit;font-weight:700;font-size:1rem;min-height:46px;padding:10px 14px;border-radius:6px;border:1.5px solid var(--accent);cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:var(--surface);color:var(--accent)}
+.btn.small{flex:0 0 auto;min-height:40px;font-size:.95rem;padding:8px 18px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.foot{color:var(--muted);font-size:.875rem;padding:18px 0 8px;max-width:40em}
+.foot p{margin:0 0 6px}
+#allText{display:block;width:100%;margin-top:12px;font:inherit;font-size:.95rem;color:var(--ink);background:var(--surface);border:1.5px solid var(--accent);border-radius:6px;padding:10px;resize:vertical}
+#allText[hidden]{display:none}
+
+.bar{position:sticky;bottom:0;z-index:5;display:flex;gap:10px;margin:12px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1.5px solid var(--line)}
+
+:where(button,input[type=checkbox],select.full):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.box select:focus-visible{outline:none}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="title-row">
+      <h1>cIF 劑量試算</h1>
+      <span class="ver">v1.0 · 2026/10/22 更新</span>
+    </div>
+    <p>輸入稀釋方式與流速，換算每公斤劑量，並產生可貼進病歷的醫囑文字。</p>
+  </header>
+
+  <section class="patient" aria-label="病人資料">
+    <div class="f">
+      <span class="lab date-lab"><label for="date">日期</label><label class="chk"><input type="checkbox" id="showDate" checked>加在醫囑</label></span>
+      <span class="box" id="dateBox"><input type="date" id="date"></span>
+    </div>
+    <label class="f">
+      <span class="lab">體重 CBW</span>
+      <span class="box"><input id="weight" inputmode="decimal" autocomplete="off" placeholder="1.395"><span class="suf">kg</span></span>
+    </label>
+    <p class="note" id="weightNote" role="status" hidden></p>
+  </section>
+
+  <div id="list"></div>
+
+  <div class="foot">
+    <p>算法：1 mL/hr 的劑量 ＝ 藥量 ÷ 稀釋體積 ÷ 體重；單位為每分鐘時再 ÷ 60。結果四捨五入到小數第二位，尾數的 0 照常顯示。</p>
+    <p>給藥前請再與藥局標籤及幫浦設定核對。頁面不儲存任何資料，重新整理後需重新輸入。</p>
+    <textarea id="allText" rows="4" readonly aria-label="全部醫囑文字" hidden></textarea>
+  </div>
+
+  <div class="bar">
+    <button type="button" id="add" class="btn ghost">新增一組點滴</button>
+    <button type="button" id="copyAll" class="btn primary" disabled>複製全部醫囑</button>
+  </div>
+</main>
+
+<template id="tpl">
+  <article class="inf is-empty">
+    <div class="inf-head">
+      <input class="name" autocomplete="off" placeholder="藥名（選填）" aria-label="藥名">
+      <button type="button" class="remove">移除</button>
+    </div>
+    <div class="grid">
+      <label class="f">
+        <span class="lab">藥量</span>
+        <span class="box">
+          <input class="amt" inputmode="decimal" autocomplete="off" placeholder="1">
+          <select class="amtUnit" aria-label="藥量單位">
+            <option value="mg">mg</option>
+            <option value="mcg">mcg</option>
+            <option value="U">U</option>
+          </select>
+        </span>
+      </label>
+      <label class="f">
+        <span class="lab">稀釋體積</span>
+        <span class="box"><input class="vol" inputmode="decimal" autocomplete="off" placeholder="26"><span class="suf">mL</span></span>
+      </label>
+      <label class="f">
+        <span class="lab">流速</span>
+        <span class="box"><input class="rate" inputmode="decimal" autocomplete="off" placeholder="0.4"><span class="suf">mL/hr</span></span>
+      </label>
+      <label class="f">
+        <span class="lab">劑量單位</span>
+        <span class="box"><select class="outUnit full"></select></span>
+      </label>
+    </div>
+
+    <div class="readout" aria-live="polite">
+      <div>
+        <span class="now-lab">目前流速的劑量</span>
+        <div class="now-num"><span class="now-val">—</span><span class="now-unit">mcg/kg/min</span></div>
+      </div>
+      <dl class="facts">
+        <dt>1 mL/hr</dt><dd class="per1">—</dd>
+        <dt>濃度</dt><dd class="conc">—</dd>
+      </dl>
+    </div>
+
+    <div class="target">
+      <span class="t-lab">目標劑量</span>
+      <span class="box"><input class="tgt" inputmode="decimal" autocomplete="off" aria-label="目標劑量"><span class="suf tgt-unit">mcg/kg/min</span></span>
+      <span>需流速 <span class="tgt-out">— mL/hr</span></span>
+      <button type="button" class="apply" hidden>設為目前流速</button>
+    </div>
+
+    <div class="order">
+      <div class="order-head">
+        <span class="lab">醫囑文字</span>
+        <span class="opts">
+          <label class="chk"><input type="checkbox" class="showName" checked>加註藥名</label>
+          <label class="chk"><input type="checkbox" class="titr" checked>加註 with titration</label>
+        </span>
+      </div>
+      <p class="order-text pending"></p>
+      <button type="button" class="btn primary small copy" disabled>複製</button>
+    </div>
+  </article>
+</template>
+
+<script>
+(() => {
+  const AMT = {
+    mg:  { kind: 'mass', toBase: 1000 }, // base = mcg
+    mcg: { kind: 'mass', toBase: 1 },
+    U:   { kind: 'unit', toBase: 1 }     // base = U
+  };
+  // f converts (base per kg per hr) into the displayed unit
+  const OUT = {
+    mass: [ { k: 'mcg/kg/min', f: 1/60 }, { k: 'mcg/kg/hr', f: 1 }, { k: 'mg/kg/hr', f: 1/1000 } ],
+    unit: [ { k: 'U/kg/hr', f: 1 }, { k: 'mU/kg/min', f: 1000/60 } ]
+  };
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const list = $('#list');
+  const tpl = $('#tpl');
+  const dateEl = $('#date');
+  const showDateEl = $('#showDate');
+  const dateBox = $('#dateBox');
+  const wEl = $('#weight');
+  const wNote = $('#weightNote');
+  const addBtn = $('#add');
+  const copyAllBtn = $('#copyAll');
+  const allText = $('#allText');
+
+  // ---------- helpers ----------
+  function parseNum(raw) {
+    const s = String(raw ?? '').trim()
+      .replace(/[\uFF10-\uFF19]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+      .replace(/\uFF0E/g, '.');
+    if (!s) return null;
+    if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return NaN;
+    return parseFloat(s);
+  }
+  const ok = x => typeof x === 'number' && x > 0;
+  const isBad = x => x !== null && !ok(x);
+  function round2(v) { return Number(Math.round(Number(v + 'e2')) + 'e-2'); }
+  function fmt(v) {
+    if (!isFinite(v)) return '—';
+    if (v === 0) return '0.00';
+    if (Math.abs(v) < 0.01) return v.toPrecision(2);
+    return round2(v).toFixed(2);
+  }
+  // number exactly as the user typed it (trailing zeros kept), normalized
+  function asTyped(raw) {
+    let s = String(raw ?? '').trim()
+      .replace(/[\uFF10-\uFF19]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+      .replace(/\uFF0E/g, '.');
+    if (s.startsWith('.')) s = '0' + s;
+    if (s.endsWith('.')) s = s.slice(0, -1);
+    return s;
+  }
+  function todayISO() {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+  function md(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    return m ? `${+m[2]}/${+m[3]}` : '';
+  }
+  function setBad(input, bad) {
+    input.closest('.box').classList.toggle('bad', bad);
+    input.setAttribute('aria-invalid', bad ? 'true' : 'false');
+  }
+  function fillOut(sel, kind, keep) {
+    sel.innerHTML = '';
+    for (const o of OUT[kind]) {
+      const op = document.createElement('option');
+      op.value = o.k; op.textContent = o.k;
+      sel.appendChild(op);
+    }
+    sel.value = OUT[kind].some(o => o.k === keep) ? keep : OUT[kind][0].k;
+    sel.dataset.kind = kind;
+  }
+  const cards = () => [...list.children];
+
+  // ---------- shared inputs ----------
+  function readWeight() {
+    const w = parseNum(wEl.value);
+    setBad(wEl, isBad(w));
+    let note = '';
+    if (ok(w) && w > 150) note = `體重 ${asTyped(wEl.value)} kg 偏大，是否以公克輸入？請換算成 kg。`;
+    else if (ok(w) && w < 0.3) note = `體重 ${asTyped(wEl.value)} kg 偏小，請確認單位是 kg。`;
+    wNote.textContent = note;
+    wNote.hidden = !note;
+    return w;
+  }
+
+  // ---------- one infusion ----------
+  function update(node) {
+    const e = node._els;
+    const w = parseNum(wEl.value);
+    const a = parseNum(e.amt.value);
+    const v = parseNum(e.vol.value);
+    const r = parseNum(e.rate.value);
+    const t = parseNum(e.tgt.value);
+
+    const au = AMT[e.amtUnit.value];
+    if (e.outUnit.dataset.kind !== au.kind) fillOut(e.outUnit, au.kind, e.outUnit.value);
+    const ou = OUT[au.kind].find(o => o.k === e.outUnit.value) || OUT[au.kind][0];
+    const unit = ou.k;
+
+    setBad(e.amt, isBad(a));
+    setBad(e.vol, isBad(v));
+    setBad(e.rate, isBad(r));
+    setBad(e.tgt, isBad(t));
+
+    e.nowUnit.textContent = unit;
+    e.tgtUnit.textContent = unit;
+
+    // concentration
+    if (ok(a) && ok(v)) {
+      const c = a * au.toBase / v;
+      e.conc.textContent = au.kind === 'mass'
+        ? (c >= 1000 ? `${fmt(c / 1000)} mg/mL` : `${fmt(c)} mcg/mL`)
+        : `${fmt(c)} U/mL`;
+    } else e.conc.textContent = '—';
+
+    // dose delivered by 1 mL/hr
+    const per1 = (ok(a) && ok(v) && ok(w)) ? a * au.toBase / v / w * ou.f : null;
+    e.per1.textContent = per1 ? `${fmt(per1)} ${unit}` : '—';
+
+    // dose at current rate
+    const now = (per1 && ok(r)) ? per1 * r : null;
+    e.nowLab.textContent = ok(r) ? `目前 ${asTyped(e.rate.value)} mL/hr 的劑量` : '目前流速的劑量';
+    e.nowVal.textContent = now !== null ? fmt(now) : '—';
+    node.classList.toggle('is-empty', now === null);
+
+    // reverse: target dose -> rate
+    node._need = (per1 && ok(t)) ? t / per1 : null;
+    e.tgtOut.textContent = node._need ? `${fmt(node._need)} mL/hr` : '— mL/hr';
+    e.apply.hidden = !node._need;
+
+    // order text
+    const bad = [], missing = [];
+    [[w, '體重'], [a, '藥量'], [v, '稀釋體積'], [r, '流速']].forEach(([x, label]) => {
+      if (x === null) missing.push(label);
+      else if (!ok(x)) bad.push(label);
+    });
+    if (!bad.length && !missing.length) {
+      const parts = [];
+      const d = showDateEl.checked ? md(dateEl.value) : '';
+      const name = e.showName.checked ? e.name.value.trim() : '';
+      if (d) parts.push(`[${d}]`);
+      parts.push(`(CBW ${asTyped(wEl.value)} kg)`);
+      if (name) parts.push(name);
+      parts.push(`1 mL/hr = ${fmt(per1)} ${unit}, now ${asTyped(e.rate.value)} mL/hr = ${fmt(now)} ${unit}${e.titr.checked ? ', with titration' : ''}`);
+      node._line = parts.join(' ');
+      e.order.textContent = node._line;
+      e.order.classList.remove('pending');
+      e.copy.disabled = false;
+    } else {
+      node._line = '';
+      e.order.textContent = bad.length
+        ? `${bad.join('、')}需為大於 0 的數字`
+        : `填入${missing.join('、')}後產生醫囑`;
+      e.order.classList.add('pending');
+      e.copy.disabled = true;
+    }
+  }
+
+  function refreshAll() {
+    const n = cards().filter(c => c._line).length;
+    if (!copyAllBtn.dataset.label) {
+      copyAllBtn.textContent = n > 1 ? `複製全部醫囑（${n}）` : '複製全部醫囑';
+    }
+    copyAllBtn.disabled = n === 0;
+  }
+
+  function syncRemove() {
+    const cs = cards();
+    cs.forEach(c => { c._els.remove.hidden = cs.length === 1; });
+  }
+
+  function addCard(focus) {
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    const q = s => node.querySelector(s);
+    const e = node._els = {
+      name: q('.name'), amt: q('.amt'), amtUnit: q('.amtUnit'), vol: q('.vol'), rate: q('.rate'),
+      outUnit: q('.outUnit'), tgt: q('.tgt'), tgtUnit: q('.tgt-unit'), tgtOut: q('.tgt-out'),
+      apply: q('.apply'), titr: q('.titr'), showName: q('.showName'), order: q('.order-text'), copy: q('.copy'),
+      nowLab: q('.now-lab'), nowVal: q('.now-val'), nowUnit: q('.now-unit'),
+      per1: q('.per1'), conc: q('.conc'), remove: q('.remove')
+    };
+    fillOut(e.outUnit, 'mass', 'mcg/kg/min');
+
+    const onEdit = () => { allText.hidden = true; update(node); refreshAll(); };
+    node.addEventListener('input', onEdit);
+    node.addEventListener('change', onEdit);
+
+    e.apply.addEventListener('click', () => {
+      if (!node._need) return;
+      e.rate.value = fmt(node._need);
+      onEdit();
+      e.rate.focus();
+    });
+    e.copy.addEventListener('click', () => copyText(node._line, e.copy, '已複製', e.order));
+    e.remove.addEventListener('click', () => {
+      node.remove();
+      syncRemove();
+      refreshAll();
+      addBtn.focus();
+    });
+
+    list.appendChild(node);
+    syncRemove();
+    update(node);
+    refreshAll();
+
+    if (focus) {
+      e.name.focus({ preventScroll: true });
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      node.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }
+
+  // ---------- copy ----------
+  function selectContents(el) {
+    if (el.tagName === 'TEXTAREA') { el.focus(); el.select(); return; }
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  async function copyText(text, btn, doneLabel, selectEl) {
+    if (!text) return false;
+    let done = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        done = true;
+      }
+    } catch (_) { done = false; }
+    if (!done) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+        document.body.appendChild(ta);
+        ta.select();
+        done = document.execCommand('copy');
+        ta.remove();
+      } catch (_) { done = false; }
+    }
+    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+    btn.textContent = done ? doneLabel : '請手動複製已選取的文字';
+    if (!done && selectEl) {
+      if (selectEl === allText) allText.hidden = false;
+      selectContents(selectEl);
+    }
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => {
+      btn.textContent = btn.dataset.label;
+      delete btn.dataset.label;
+      if (btn === copyAllBtn) refreshAll();
+    }, done ? 1500 : 3000);
+    return done;
+  }
+
+  // ---------- wire up ----------
+  dateEl.value = todayISO();
+  const onShared = () => { allText.hidden = true; readWeight(); cards().forEach(update); refreshAll(); };
+  wEl.addEventListener('input', onShared);
+  dateEl.addEventListener('input', onShared);
+  dateEl.addEventListener('change', onShared);
+  showDateEl.addEventListener('change', () => {
+    dateEl.disabled = !showDateEl.checked;
+    dateBox.classList.toggle('off', !showDateEl.checked);
+    onShared();
+  });
+
+  addBtn.addEventListener('click', () => addCard(true));
+  copyAllBtn.addEventListener('click', () => {
+    const lines = cards().map(c => c._line).filter(Boolean).join('\n');
+    allText.value = lines;
+    allText.rows = Math.max(2, lines.split('\n').length + 1);
+    copyText(lines, copyAllBtn, '已複製全部', allText);
+  });
+
+  addCard(false);
+})();
+</script>
+</body>
+</html>
